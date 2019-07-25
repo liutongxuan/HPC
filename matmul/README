@@ -1,0 +1,2 @@
+build:
+g++ matmul.cc -std=c++11 -O2 -mavx2 -msse4.1 -msse4.2 -mfma -mfpmath=both -march=native -o matmul
