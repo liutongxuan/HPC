@@ -1,8 +1,8 @@
-build:
-g++ matmul.cc -std=c++11 -O2 -mavx2 -msse4.1 -msse4.2 -mfma -mfpmath=both -march=native -o matmul
+build with omp:
+g++ matmul.cc -std=c++11 -O2 -mavx2 -msse4.1 -msse4.2 -mfma -mfpmath=both -fopenmp -g -march=native -o matmul
 
 Summary:
-Case m,n,k = 1024,2037,512 matmul，loop unrolling_1x4 improve 2x faster，sse compare with loop unrolling_1x4 improve 2x faster，avx256 compare with sse improve 2x faster，totally 8x faster than initial version.
+Case m,n,k = 1024,2048,512 matmul，loop unrolling_1x4 improve 2x faster，sse compare with loop unrolling_1x4 improve 2x faster，avx256 compare with sse improve 2x faster，totally 8x faster than initial version.
 
 gcc5 is not support avx512 option which need higher than gcc6.0. And also need CPU skylake. I guess if avx512 would get 2x faster.
 

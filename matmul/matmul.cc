@@ -2,13 +2,14 @@
 #include <sys/time.h>
 #include <xmmintrin.h>
 #include <immintrin.h>
+#include <omp.h>
 
 int m = 1024;
 int n = 512;
-int k = 2037;
+int k = 2048;
 
-float A[1024*2037];// [m,k]
-float B[2037*512]; // [k,n]
+float A[1024*2048];// [m,k]
+float B[2048*512]; // [k,n]
 float C[1024*512]; // [m,n]
 
 void init() {
@@ -246,6 +247,28 @@ void matmul_unrolling_1x8_register_index_avx256() {
   }
 }
 
+void matmul_unrolling_1x8_register_index_avx256_parallel_omp() {
+  #pragma omp parallel for
+  for (int j = 0; j < n; j+=8) {
+    for (int i = 0; i < m; ++i) {
+      register int c_index_0 = i*n + j;
+      __m256 c_val = _mm256_loadu_ps(&C[c_index_0]);
+
+      for (int p = 0; p < k; ++p) {
+        register int b_index = p*n+j;
+        register int a_index = i*k+p;
+
+        __m256 b_val = _mm256_loadu_ps(&B[b_index]);
+        __m256 a_val = _mm256_set1_ps(A[a_index]);
+
+        c_val = _mm256_add_ps(_mm256_mul_ps(a_val, b_val), c_val);
+      }
+      _mm256_store_ps(&C[c_index_0], c_val);
+    }
+  }
+}
+
+
 /*
 void matmul_unrolling_1x4_register_index_avx512() {
   for (int j = 0; j < n; j+=16) {
@@ -291,6 +314,7 @@ void matmul_unrolling_1x4_register_index_sse_pack() {
 }
 
 int main() {
+  omp_set_num_threads(16);
   init();
   timeval start;
   gettimeofday(&start, nullptr);
@@ -298,8 +322,8 @@ int main() {
   timeval stop;
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_base eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
 
   std::cout << "===============================" << std::endl;
@@ -307,8 +331,8 @@ int main() {
   matmul_unrolling_1x4();
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_unrolling_1x4 eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
   
   std::cout << "===============================" << std::endl;
@@ -316,8 +340,8 @@ int main() {
   matmul_unrolling_1x4_register_index();
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_unrolling_1x4_register_index eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
   
   std::cout << "===============================" << std::endl;
@@ -325,8 +349,8 @@ int main() {
   matmul_unrolling_4x4_register_index();
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_unrolling_4x4_register_index eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
   
   std::cout << "===============================" << std::endl;
@@ -334,8 +358,8 @@ int main() {
   matmul_unrolling_1x4_register_index_sse();
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_unrolling_1x4_register_index_sse eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
   
   std::cout << "===============================" << std::endl;
@@ -343,17 +367,17 @@ int main() {
   matmul_unrolling_1x4_register_index_aligned_sse();
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_unrolling_1x4_register_index_aligned_sse eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
   
   std::cout << "===============================" << std::endl;
   gettimeofday(&start, nullptr);
   matmul_unrolling_1x8_register_index_avx256();
   gettimeofday(&stop, nullptr);
-  std::cout << "matmul_unrolling_1x4_register_index_avx256 eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+  std::cout << "matmul_unrolling_1x8_register_index_avx256 eclapse:"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
 
   std::cout << "===============================" << std::endl;
@@ -361,8 +385,8 @@ int main() {
   matmul_unrolling_1x8_register_index();
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_unrolling_1x8_register_index eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
   /*
   std::cout << "===============================" << std::endl;
@@ -379,8 +403,17 @@ int main() {
   matmul_unrolling_1x4_register_index_sse_pack();
   gettimeofday(&stop, nullptr);
   std::cout << "matmul_unrolling_1x4_register_index_sse_pack eclapse:"
-            << ((stop.tv_sec- start.tv_sec)* 1000 *1000 + (stop.tv_usec- start.tv_usec))
-            << "us"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
+            << std::endl;
+  
+  std::cout << "===============================" << std::endl;
+  gettimeofday(&start, nullptr);
+  matmul_unrolling_1x8_register_index_avx256_parallel_omp();
+  gettimeofday(&stop, nullptr);
+  std::cout << "matmul_unrolling_1x8_register_index_avx256_parallel_omp eclapse:"
+            << ((stop.tv_sec- start.tv_sec)* 1000 + (stop.tv_usec- start.tv_usec)/1000)
+            << "ms"
             << std::endl;
   return 0;
 }
